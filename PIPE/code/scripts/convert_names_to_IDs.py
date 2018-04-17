@@ -4,7 +4,7 @@
 import sys
 
 if len(sys.argv) != 4:
-    print 'USAGE: convert_names_to_IDs.py input_file protein_index_file output_file'
+    print 'USAGE: convert_names_to_IDs.py input_file protein_sequences_file output_file'
     print '\nconverts input_file from pairs of protein IDs to pairs of protein'
     print 'names (as defined by protein_index_file), written to output_file\n'
     sys.exit(0)
@@ -13,7 +13,7 @@ index_file = open(sys.argv[2], 'r')
 
 proteins = dict([])
 
-index_file.readline()
+#index_file.readline()
 
 i = 0;
 for line in index_file:
