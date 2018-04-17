@@ -1,0 +1,12 @@
++ PIPE/code
++ PIPE/code/MP-PIPE2/***
++ PIPE/code/genTab/***
+- PIPE/code/**
++ PIPE/data
+- PIPE/data/human_soy/input
+- PIPE/data/human_soy/output
++ PIPE/data/human_soy/***
+- PIPE/data/**
+- *.tar.gz
+- *.out
+- *.training_data
