@@ -34,7 +34,7 @@ def get_num_hosts(hostfile):
 ## Check to see that these parameters are correct ##
 ####################################################
 local_dir = '/home/bradbarnes/final_PIPE/' # this directory will contain the correct PIPE folder
-remote_dir = '/tmp/bradbarnes/PIPE/'    # this is where you code will run out of remotely   
+remote_dir = '/tmp/bradbarnes/'    # this is where you code will run out of remotely   
 
 update = local_dir + 'PIPE/code/scripts/update.py'
 
@@ -256,12 +256,12 @@ if run_mppipe:
     print ('mpirun -np ' + str(num_mp_pipe_hosts) + ' -hostfile ' + mp_pipe_hostfile + ' ' +
             mp_pipe + ' input/' + organism_name + '.in output/' + organism_name + '.out ' +
             remote_dir + 'PIPE/data/' + organism_name + '/data/protein_pairs_index.txt '+
-            remote_dir + 'PIPE/data/' + organism_name + '/database/databasexH ' + 
+            remote_dir + 'PIPE/data/' + organism_name + '/database ' + 
             remote_dir + 'PIPE/data/' + organism_name + '/data/PIPE_org.txt')
     os.system('mpirun -np ' + str(num_mp_pipe_hosts) + ' -hostfile ' + mp_pipe_hostfile + ' ' + 
                 mp_pipe + ' input/' + organism_name + '.in output/' + organism_name + '.out ' +
                 remote_dir + 'PIPE/data/' + organism_name + '/data/protein_pairs_index.txt '+
-                remote_dir + 'PIPE/data/' + organism_name + '/database/database ' +
+                remote_dir + 'PIPE/data/' + organism_name + '/database ' +
                 remote_dir + 'PIPE/data/' + organism_name + '/data/PIPE_org.txt')
 
 os.chdir(cur_dir)            

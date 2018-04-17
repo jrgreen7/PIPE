@@ -63,10 +63,10 @@ static const int PACKET_SIZE = 1000;
 int THREADS = 2;
 
 //CAT'S constants
-#define MAX_DB_FILE 5300224
-#define NUM_SET_BITS 151872
-#define MAX_PROTEIN_LEN 24177
-#define MAX_NEIGHBOURS 502
+#define MAX_DB_FILE 312912
+#define NUM_SET_BITS 1024
+#define MAX_PROTEIN_LEN 5537
+#define MAX_NEIGHBOURS 16
 typedef uint64_t BitSet[NUM_SET_BITS/64];
 #define SET_WORD(set, element) ((set)[(element) / 64])
 #define SET_MASK(element) (((uint64_t)1) << ((element) % 64))
