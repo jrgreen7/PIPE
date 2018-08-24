@@ -1,7 +1,7 @@
 num proteins	1000
 num known pairs	504
 num pairs	500500
-max_db_file	175036
+max_db_file	312912
 num_set_bits	1024
 max_protein_len	5537
 max_neighbours	16

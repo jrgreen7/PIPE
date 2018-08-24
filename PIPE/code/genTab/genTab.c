@@ -15,27 +15,32 @@ typedef struct {
 } NeighbourList;
 
 int main(int argc, char *argv[]) {
-	int i, j, mype, npes, numProteins, index, seqSize, k;
+	int i, j, mype, npes, numProteins,numProteins1, index, seqSize, k;
 	int p1, p2, len1, len2;
-	int tmp_int, cnt_int, cum_int;
-	int *scratchPad;
+	int tmp_int, cnt_int;
+	int *scratchPad, *scratchPadInts;
 	double startTime=0, inputTime=0, seqCmpTime, outputTime;
 	char *ptr1, *ptr2;
 	char dbName[128];
+	char dbName2[128];
 	int *seqLen;
     unsigned int neigh_id;
 	char **sequences, **seqName;
-	FILE *seqFile, *dbFile;
+	FILE *seqFile, *dbFile, *dbFile2;
+    NeighbourList *Neighbours;
+	//FILE *logFile;
+    //char logFileName[20];
 	Token_Pair proSeqPair;
 
-	if (argc != 4) {
-		printf("Usage: %s PROTEIN_SEQ_FILE DB_DIR ORG_SETTINGS\n", argv[0]);
+	if (argc != 5) {
+		printf("Usage: %s PROTEIN_SEQ_FILE DB_DIR ORG_SETTINGS PROTEIN_PAIRS_INDEX\n", argv[0]);
 		return -1;
 	}
 	
 	PROTEIN_SEQ_FILE = argv[1];
 	DBDIR = argv[2];
 	ORG_SETTINGS = argv[3];
+	PAIRS_FILE = argv[4];
 	
 #ifdef PARALLEL
 	MPI_Init (&argc, &argv);
@@ -67,6 +72,7 @@ int main(int argc, char *argv[]) {
 
     printf("There are %u organisms\n", num_org);
 
+    //printf("there are %d organisms!\n", num_org);
     int ranges[num_org+1];
     ranges[0] = -1;
     for (i = 1; i <= num_org; i++) {
@@ -87,8 +93,17 @@ int main(int argc, char *argv[]) {
         fscanf(org_file, "%d", &temp_pos);
         valid[temp_pos] = 1;
     }
-    fclose(org_file);
+
     int org_counts[num_org]; // for counting how many similar proteins are seen in each organism
+
+
+    //// Adding logFile
+    //sprintf(logFileName, "logFile_%d.log", mype);
+    //logFile = fopen(logFileName,"w");
+    //if (logFile == NULL) {
+	//	fprintf(stderr, "ERROR: could not open log file for PID %d\n", mype);
+	//	exit(-1);
+    //}
 
 	numProteins = count_lines(PROTEIN_SEQ_FILE);
     printf("numProteins == %d\n", numProteins);
@@ -128,6 +143,60 @@ int main(int argc, char *argv[]) {
 		index++;
 	}
 
+    // ADDING neighbours list code!
+    int i1, j1;
+    FILE* filePtr = fopen(PAIRS_FILE, "r");
+	if (filePtr == NULL) {
+		fprintf(stderr, "ERROR: could not open protein index file %s\n", PAIRS_FILE);
+		exit(-1);
+	}
+    if (fscanf(filePtr, "%d", &numProteins1) < 0) {
+        fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
+        exit(-1);
+    }
+
+	if (numProteins != numProteins1) {
+		fprintf(stderr, "New: Diff number of proteins in pairs file than lines in seqs file: %d in seqs, %d in pairs\n",numProteins,numProteins1);
+		exit(-1);
+	}
+
+    Neighbours = (NeighbourList *) malloc(sizeof(NeighbourList) * numProteins1);
+    memset(Neighbours, 0, sizeof(NeighbourList) * numProteins1);
+
+    if (Neighbours == NULL) {
+        fprintf(stderr, "ERROR: Slave cannot allocate memory ");
+        fprintf(stderr, "for interaction graph.\n");
+        exit(-1);
+    }
+
+
+    for(i1=0; i1<numProteins1;i1++) {
+        char name[16];
+
+        if (fscanf(filePtr, "%s", name) < 0) {
+            fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
+            exit(-1);
+        }
+
+        //fprintf(stderr, "Comparison:%s\t%s\n", name, seqName[i1]);
+        //if (!strcmp(name, seqName[i1])) {
+        //    fprintf(stderr, "Diff names %s %s\n", name, seqName[i1]);
+        //    exit(-1);
+        //}
+
+        if (fscanf(filePtr, "%d", &Neighbours[i1].count) < 0) {
+            fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
+            exit(-1);
+        }
+        for (j1=0; j1<Neighbours[i1].count; j1++) {
+            if (fscanf(filePtr, "%d", &Neighbours[i1].ids[j1]) < 0) {
+                fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
+                exit(-1);
+            }
+        }
+    }
+    fclose(filePtr);
+
 	if (mype == 0) {
 		inputTime = timer();
 		printf("done.\n\n");
@@ -139,9 +208,14 @@ int main(int argc, char *argv[]) {
 #endif
 	
 	scratchPad = (int *) malloc((size_t) MAX_PROTEIN_LEN * MAX_NUM_PROTEINS * sizeof(int));
+	scratchPadInts = (int *) malloc((size_t) MAX_PROTEIN_LEN * MAX_NUM_PROTEINS * sizeof(int));
+	//bzero(scratchPad, 2 * MAX_PROTEIN_LEN * MAX_NUM_PROTEINS);
 	size_t temp;
 	for(temp = 0; temp < (size_t) MAX_PROTEIN_LEN * MAX_NUM_PROTEINS; temp++) {
 		scratchPad[temp] = 0;
+		scratchPadInts[temp] = 0;
+		//if(temp%10000000 == 0)
+		//	printf("%ld\n", temp);
 	}
 
 	
@@ -152,6 +226,8 @@ int main(int argc, char *argv[]) {
         }
 
 		printf("PE %d: Processing %d (%s)\n", mype, p1, seqName[p1]);
+		//fprintf(logFile,"PE %d: Processing %d (%s)\n", mype, p1, seqName[p1]);
+	   	//fflush(logFile);
 	   	fflush(NULL);
 
 		ptr1 = sequences[p1];
@@ -169,74 +245,122 @@ int main(int argc, char *argv[]) {
 
 		}
 		
-        // Write database file
+        // Write modified original file
 		sprintf(dbName, "%s/%s.db", DBDIR, seqName[p1]);
 		dbFile = fopen(dbName, "w");
 		if (dbFile == NULL) {
 			fprintf(stderr, "ERROR: could not open file %s for writing\n", dbName);
 			exit(-1);
 		}
+        // Write modified new file
+		sprintf(dbName2, "%s/%s.db_star", DBDIR, seqName[p1]);
+		dbFile2 = fopen(dbName2, "w");
+		if (dbFile2 == NULL) {
+			fprintf(stderr, "ERROR: could not open file %s for writing\n", dbName2);
+			exit(-1);
+		}
 
-        // STORAGE 1: Write num of amino acids, and info about each window of amino acids
 		tmp_int = (int) seqLen[p1];
-		fwrite(&tmp_int, sizeof(int), 1, dbFile); // Write length (amino acids) of protein
+		fwrite(&tmp_int, sizeof(int), 1, dbFile);
+		fwrite(&tmp_int, sizeof(int), 1, dbFile2);
 
-        // Loop through every window in protein to store information (e.g frequency) of that particular window
 		for (i=0; i<seqLen[p1]; i++) {
 			cnt_int = 0;
-            memset(org_counts, 0, sizeof(org_counts)); // Zero out previous organism count trackers for each new window
+            // Zero out previous organism count trackers for each new window
+            memset(org_counts, 0, sizeof(org_counts));
 			for (j = 0; j < numProteins; j++) {
 				if (scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] != 0) {
 				  cnt_int++;
-                  org_counts[return_organism(j,ranges,num_org)] += 1; // Add count for which organism it is
+                  // Add count for which organism it is
+                  org_counts[return_organism(j,ranges,num_org)] += 1;
                 } 
 			}
             // Write total number of prots with similar window
 			fwrite(&cnt_int, sizeof(int), 1, dbFile);
+			fwrite(&cnt_int, sizeof(int), 1, dbFile2);
             // Write similar prot counts for individual organisms
             for (j=0; j<num_org;j++) {
                 fwrite(&org_counts[j], sizeof(int), 1, dbFile);
             }
+            for (j=0; j<num_org;j++) {
+                fwrite(&org_counts[j], sizeof(int), 1, dbFile2);
+            }
         }
 		
-        // STORAGE 2: Write num of other proteins, and index where further information about each protein is stored
+        // Instead of writing length, write number of proteins tested against
+		//tmp_int = (int) seqLen[p1];
         tmp_int = numProteins;
-		fwrite(&tmp_int, sizeof(int), 1, dbFile); // Write number of proteins tested against
+		fwrite(&tmp_int, sizeof(int), 1, dbFile);
 
-        // Store lookup table so can find location of information about each protein using its index
-        cum_int = 0; // cumulative integer
-        for (j = 0; j < numProteins; j++) { // Loop through protein then window, instead of opposite done above
+        // Swap order of iteration from for s in seq, for j in prot to other way
+        for (j = 0; j < numProteins; j++) {
+
 			cnt_int = 0;
             for (i=0; i<seqLen[p1]; i++) {
 				if (scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] != 0) {
 				  cnt_int++;
                 } 
 			}
-            fwrite(&cum_int, sizeof(int), 1, dbFile); // Write cumulative sum, which is location of protein information
-            cum_int += (1+cnt_int); // +1 because also storing number of windows for each protein as well as each window
-        }
-
-        // STORAGE 3: Write information about related to DB protein for each other protein (e.g. windows DB protein has that are similar to said protein)
-        for (j = 0; j < numProteins; j++) { // Loop through protein then window, instead of opposite done above
-			cnt_int = 0;
-            for (i=0; i<seqLen[p1]; i++) {
-				if (scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] != 0) {
-				  cnt_int++;
-                } 
-			}
-			fwrite(&cnt_int, sizeof(int), 1, dbFile); // Write number of windows in protein with similar window to other protein
+			
+            // Write total number of prots with similar window
+            // but actually write number of windows in protein with similar window to other protein
+			fwrite(&cnt_int, sizeof(int), 1, dbFile);
             for (i=0; i<seqLen[p1]; i++) {
 				if (scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] != 0)
 				{
 					tmp_int = (int) i;
-					fwrite(&tmp_int, sizeof(int), 1, dbFile); // Write window location in DB protein is similar to other protein
+					fwrite(&tmp_int, sizeof(int), 1, dbFile);
+				}
+			}			
+            for (i=0; i<seqLen[p1]; i++) {
+				if (scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] != 0) {
+                    // do plus 1 to all neighbours for same offset
+                    for (k = 0; k < Neighbours[j].count; k++) {
+                        neigh_id = Neighbours[j].ids[k];
+                        scratchPadInts[(size_t) i*MAX_NUM_PROTEINS + neigh_id] += 1;
+                    }
                     scratchPad[(size_t) i*MAX_NUM_PROTEINS + j] = 0;
+                }			
+            }
+		}
+		fclose(dbFile);
+
+        // Write modified DB file
+		
+        // Instead of writing length, write number of proteins tested against
+        tmp_int = numProteins;
+		fwrite(&tmp_int, sizeof(int), 1, dbFile2);
+
+        // Swap order of iteration from for s in seq, for j in prot to other way
+        for (j = 0; j < numProteins; j++) {
+			cnt_int = 0;
+            // write number of windows in protein with similar window to other protein
+            for (i=0; i<seqLen[p1]; i++) {
+				if (scratchPadInts[(size_t) i*MAX_NUM_PROTEINS + j] != 0) {
+				  cnt_int++;
+                } 
+			}
+			fwrite(&cnt_int, sizeof(int), 1, dbFile2);
+
+            for (i=0; i<seqLen[p1]; i++) {
+				if (scratchPadInts[(size_t) i*MAX_NUM_PROTEINS + j] != 0)
+				{
+                    // Write window location
+					tmp_int = (int) i;
+					fwrite(&tmp_int, sizeof(int), 1, dbFile2);
+                    // Write number of times interaction occured
+                    tmp_int = scratchPadInts[(size_t) i*MAX_NUM_PROTEINS + j];
+					fwrite(&tmp_int, sizeof(int), 1, dbFile2);
+                    // zero out scratchpad for next time
+                    scratchPadInts[(size_t) i*MAX_NUM_PROTEINS + j] = 0;
 				}
 			}			
 		}
-		fclose(dbFile);
+		fclose(dbFile2);
 	}
 
+fclose(org_file);
+//fclose(logFile);
 
 #ifdef PARALLEL
 	MPI_Barrier(MPI_COMM_WORLD);

@@ -63,10 +63,13 @@ static const int PACKET_SIZE = 1000;
 int THREADS = 2;
 
 //CAT'S constants
-#define MAX_DB_FILE 175036
+#define MAX_DB_FILE 312912
 #define NUM_SET_BITS 1024
 #define MAX_PROTEIN_LEN 5537
 #define MAX_NEIGHBOURS 16
+typedef uint64_t BitSet[NUM_SET_BITS/64];
+#define SET_WORD(set, element) ((set)[(element) / 64])
+#define SET_MASK(element) (((uint64_t)1) << ((element) % 64))
 
 //******
 //PIPE-Sites constants
@@ -75,7 +78,6 @@ static const int minBase = 4;
 static const int min_peak_height = 0;
 //******
 char* INTERACTION_GRAPH_FILE;
-char* PAIRS_FILE;
 char* PIPE_DB_DIR;
 char* ORG_SETTINGS;
 
@@ -96,9 +98,9 @@ typedef struct {
 } data;
 
 typedef struct {
-    unsigned int first;
-    unsigned int second;
-} Interaction;
+    unsigned int count;
+    unsigned int ids[MAX_NEIGHBOURS];
+} NeighbourList;
 
 typedef struct {
     int row;
@@ -113,8 +115,8 @@ typedef struct {
 void master(char*, char*);
 void slave();
 void do_work(char***, MPI_Datatype);
-int run_pipe(Interaction*, data*, char***, unsigned int**,
-                unsigned int**, unsigned int*, unsigned int*, int, const training_pair [], unsigned int pairs_list_size,
+int run_pipe(NeighbourList*, data*, char***, unsigned int**,
+                unsigned int**, unsigned int*, unsigned int*, BitSet*, const training_pair [], unsigned int pairs_list_size,
                 unsigned int num_org);
 void load_packets(data***, int*, char*, int*, data**);
 void merge_results(data**, data**, int*, int);
@@ -122,7 +124,8 @@ void process_results(data**, int, char***, char*);
 void load_names(char*** names, int* num_proteins);
 void build_derived_type(MPI_Datatype*);
 FILE *safe_fopen(char*, char*);
-void readSimilarity(unsigned int*, char*);
+void readSimilarityNew(unsigned int*, char*);
+void readSimilarityStar(unsigned int*, char*);
 int eFilter(unsigned int**, unsigned int**, int, int, int);
 int getInteractionRange(unsigned int**, int, int, int*, int*,
                             int*, int*, int*);
@@ -132,18 +135,17 @@ uint64_t find_normalization_factor(const unsigned int * const, const unsigned in
 
 int main(int argc, char** argv) {
 
-    if(argc != 7) {
+    if(argc != 6) {
         printf("\nUSAGE: mpirun -np <# processes> mp-pipe2 ");
         printf("<protein pairs input file> <output file> ");
-        printf("<PIPE Interaction Graph File> <Training Pair Indexes> <PIPE DB dir");
+        printf("<PIPE Interaction Graph File> <PIPE DB dir");
         printf("(no trailing '/')> <ORG_SETTINGS_FILE>\n\n");
         return 0;
     }
 
     INTERACTION_GRAPH_FILE = argv[3];
-    PAIRS_FILE = argv[4];
-    PIPE_DB_DIR = argv[5];
-    ORG_SETTINGS = argv[6];
+    PIPE_DB_DIR = argv[4];
+    ORG_SETTINGS = argv[5];
     double start, end;
     int rank;
 
@@ -324,7 +326,7 @@ void free_matrix(unsigned int **matrix) {
 
 void do_work(char*** names, MPI_Datatype data_type) {
 
-    int numProteins, numPairs, check = 1, work_remaining = 0, results_size = 0;
+    int numProteins, check = 1, work_remaining = 0, results_size = 0;
     data* results = (data*) malloc(2 * PACKET_SIZE * DATA_SIZE);
     data* total_work = (data*) malloc(PACKET_SIZE * DATA_SIZE);
 
@@ -335,7 +337,7 @@ void do_work(char*** names, MPI_Datatype data_type) {
 
     data work;
     MPI_Status status;
-    Interaction *InteractionsList;
+    NeighbourList *Neighbours;
     
     // Brad's organism stuff
     FILE * org_file;
@@ -363,28 +365,41 @@ void do_work(char*** names, MPI_Datatype data_type) {
     }
     fclose(org_file);
 
-    // Read in interactions index file
+    //CAT'S
     int i, j;
-    FILE* filePtr = safe_fopen(PAIRS_FILE, "r");
-    if (fscanf(filePtr, "%d", &numPairs) < 0) {
-        fprintf(stderr, "ERROR: Cannot read interactions list file.\n");
+    FILE* filePtr = safe_fopen(INTERACTION_GRAPH_FILE, "r");
+    if (fscanf(filePtr, "%d", &numProteins) < 0) {
+        fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
         exit(-1);
     }
-    InteractionsList = (Interaction *) malloc(sizeof(Interaction) * numPairs);
-    memset(InteractionsList, 0, sizeof(Interaction) * numPairs);
-    if (InteractionsList == NULL) {
+    Neighbours = (NeighbourList *) malloc(sizeof(NeighbourList) * numProteins);
+    memset(Neighbours, 0, sizeof(NeighbourList) * numProteins);
+
+    if (Neighbours == NULL) {
         fprintf(stderr, "ERROR: Slave cannot allocate memory ");
-        fprintf(stderr, "for interactions list.\n");
+        fprintf(stderr, "for interaction graph.\n");
         exit(-1);
     }
-    for(i=0; i<numPairs;i++) {
-        if (fscanf(filePtr, "%u", &InteractionsList[i].first) < 0) {
-            fprintf(stderr, "ERROR: Cannot read interactions list file.\n");
+
+    for(i=0; i<numProteins;i++) {
+        char name[25];
+
+        if (fscanf(filePtr, "%s", name) < 0) {
+            fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
             exit(-1);
         }
-        if (fscanf(filePtr, "%u", &InteractionsList[i].second) < 0) {
-            fprintf(stderr, "ERROR: Cannot read interactions list file.\n");
+
+        assert(!strcmp(name, (*names)[i]));
+
+        if (fscanf(filePtr, "%d", &Neighbours[i].count) < 0) {
+            fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
             exit(-1);
+        }
+        for (j=0; j<Neighbours[i].count; j++) {
+            if (fscanf(filePtr, "%d", &Neighbours[i].ids[j]) < 0) {
+                fprintf(stderr, "ERROR: Cannot read Interaction Graph file.\n");
+                exit(-1);
+            }
         }
     }
     fclose(filePtr);
@@ -412,7 +427,9 @@ void do_work(char*** names, MPI_Datatype data_type) {
     {
         //CAT'S
         unsigned int **H, **one;
-        unsigned int *similarityA, *similarityB;
+        //unsigned int *similarity1, *similarity2;
+        unsigned int *similarityA, *similarityB_star;
+        BitSet *sim2Bits;
 
         H = (unsigned int**) malloc(MAX_PROTEIN_LEN *
                                         sizeof(unsigned int*));
@@ -444,19 +461,33 @@ void do_work(char*** names, MPI_Datatype data_type) {
         }
 
         #ifndef PRELOAD_DB
+            //similarityA = (unsigned int*)malloc(MAX_DB_FILE *
+            //                                        sizeof(unsigned int*));
+            //similarityB_star = (unsigned int*)malloc(MAX_DB_FILE *
+            //                                        sizeof(unsigned int*));
             similarityA = (unsigned int*)malloc(MAX_DB_FILE *
                                                     sizeof(unsigned int));
-            similarityB = (unsigned int*)malloc(MAX_DB_FILE *
+            similarityB_star = (unsigned int*)malloc(MAX_DB_FILE *
                                                     sizeof(unsigned int));
 
-            if (similarityA == NULL || similarityB == NULL) {
+            if (similarityA == NULL || similarityB_star == NULL) {
                 fprintf(stderr, "ERROR: Cannot allocate memory ");
                 fprintf(stderr, "for PIPE DB files.\n");
                 exit(-1);
             }
+            // TODO is this necessary..
             memset(similarityA, 0, MAX_DB_FILE*sizeof(unsigned int));
-            memset(similarityB, 0, MAX_DB_FILE*sizeof(unsigned int));
+            memset(similarityB_star, 0, MAX_DB_FILE*sizeof(unsigned int));
         #endif
+
+        sim2Bits = (BitSet*)malloc(MAX_PROTEIN_LEN*sizeof(BitSet));
+
+        if (sim2Bits == NULL) {
+            fprintf(stderr, "ERROR: Cannot allocate memory for bit array.\n");
+            exit(-1);
+        }
+
+        memset(sim2Bits, 0, MAX_PROTEIN_LEN*sizeof(BitSet));
 
         //**********
         while (1) {
@@ -495,12 +526,12 @@ void do_work(char*** names, MPI_Datatype data_type) {
 
             if (check) {
                 #ifdef PRELOAD_DB
-                    similarityA = &(db[work.a * MAX_DB_FILE]);
-                    similarityB = &(db[work.b * MAX_DB_FILE]);
+                    similarity1 = &(db[work.a * MAX_DB_FILE]);
+                    similarity2 = &(db[work.b * MAX_DB_FILE]);
                 #endif
 
-                if (run_pipe(InteractionsList, &work, names, H, one,
-                            similarityA, similarityB, numPairs, pairs_list, pairs_list_size, num_org)) {
+                if (run_pipe(Neighbours, &work, names, H, one,
+                            similarityA, similarityB_star, sim2Bits, pairs_list, pairs_list_size, num_org)) {
                     #pragma omp critical (edit_results)
                     {
                         results_size++;
@@ -512,15 +543,17 @@ void do_work(char*** names, MPI_Datatype data_type) {
         }
         free_matrix(one);
         free_matrix(H);
+        free(sim2Bits);
+        sim2Bits = NULL;
         #ifndef PRELOAD_DB
             free(similarityA);
             similarityA = NULL;
-            free(similarityB);
-            similarityB = NULL;
+            free(similarityB_star);
+            similarityB_star = NULL;
         #endif
     }
 
-    free(InteractionsList);
+    free(Neighbours);
 
     MPI_Send(&results_size, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
@@ -538,10 +571,10 @@ void do_work(char*** names, MPI_Datatype data_type) {
     #endif
 }
 
-int run_pipe(Interaction* InteractionsList, data* work, char*** names,
+int run_pipe(NeighbourList* Neighbours, data* work, char*** names,
                 unsigned int** H, unsigned int** one,
-                unsigned int* similarityA, unsigned int* similarityB,
-                int numPairs, const training_pair pairs_list [], unsigned int pairs_list_size,
+                unsigned int* similarityA, unsigned int* similarityB_star,
+                BitSet* sim2Bits, const training_pair pairs_list [], unsigned int pairs_list_size,
                 unsigned int num_org) {
 
     /*** MAIN PIPE ALGORITHM ***/
@@ -550,7 +583,7 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
     int seq1_numProt = 0, seq2_numProt = 0;
     double start, end;
     const unsigned int *simPtr1, *simPtr2; //CAT'S
-    unsigned int sim_cnt1; //CAT'S
+    unsigned int sim_cnt1, tmp_int; //CAT'S
     static struct timeval tv;
     static struct timezone tz;
 
@@ -561,13 +594,13 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
     start = (double)tv.tv_sec + (double)tv.tv_usec/1000000.0;
 
     #ifndef PRELOAD_DB
-        readSimilarity(similarityA, (*names)[work->a]);
-        readSimilarity(similarityB, (*names)[work->b]);
+        readSimilarityNew(similarityA, (*names)[work->a]);
+        readSimilarityStar(similarityB_star, (*names)[work->b]);
     #endif
 
     simPtr1 = similarityA;
     seq1_length = *simPtr1++;
-    simPtr2 = similarityB;
+    simPtr2 = similarityB_star;
     seq2_length = *simPtr2++;
 
     simPtr1 += seq1_length * (1 + num_org);
@@ -576,50 +609,121 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
     seq1_numProt = *simPtr1++;
     seq2_numProt = *simPtr2++;
 
+    //printf("%s\t%s\t\t%d\t%d\t%d\t%d\n", (*names)[work->a],
+    //          (*names)[work->b], seq1_length, seq2_length, seq1_numProt, seq2_numProt);
+
     if (seq1_numProt != seq2_numProt) {
         fprintf(stderr, "ERROR: Length of two db files are different: %d %d\n", seq1_numProt, seq2_numProt);
         exit(-1);
     }
 
+    // Build interactions landscape
+    int prot_index = 0;
     int a = 0, b = 0; // counters
-    int first = 0, second = 0; 
     int numSimA = 0, numSimB = 0;
-    int r = 0, c = 0;
-    int offsetA, offsetB;
+    int total_hits = 0;
+    //int r = 0, c = 0, th = 0;
+    int r, c, th;
+    unsigned int minA = 0, minB = 0, maxA = 0, maxB = 0;
     if (seq1_length >= WINDOW_SIZE && seq2_length >= WINDOW_SIZE) {
-        offsetA = 1 + (seq1_length * (num_org + 1)) + 1;
-        offsetB = 1 + (seq2_length * (num_org + 1)) + 1;
-        for (i = 0; i < numPairs; i++) {
-            first = offsetA + seq1_numProt + similarityA[offsetA + InteractionsList[i].first];
-            second = offsetB + seq2_numProt + similarityB[offsetB + InteractionsList[i].second];
-            numSimA = similarityA[first];
-            numSimB = similarityB[second];
+        while (prot_index < seq1_numProt) {
+            numSimA = *simPtr1++;
+            numSimB = *simPtr2++;
+
             for (a = 0; a < numSimA; a++) {
-                for (b = 0; b < (numSimB); b++) {
-                    r = similarityA[first + a + 1];
-                    c = similarityB[second + b + 1];
+                for (b = 0; b < (2*numSimB); b++) {
+                    if ((b % 2) == 1) {
+                        continue;
+                    }
+                    r = *(simPtr1+a);
+                    c = *(simPtr2+b);
+                    th = *(simPtr2+b+1);
+                    //c = similarityB_star[offsetB + B_i+1+b];
+                    //th = similarityB_star[offsetB + B_i+1+b+1];
+                    
                     // TODO this is an issue with weird readings of some kind - shouldn't be necessary
                     if (r < (seq1_length - WINDOW_SIZE + 1) && c < (seq2_length - WINDOW_SIZE + 1) && r >= 0 && c >= 0) {
-                        H[r][c] += 1;
+                        H[r][c] += th;
+                        total_hits += th;
                     }
+
+                    //r = similarityA[offsetA + A_i+1+a];
+                    //c = similarityB_star[offsetB + B_i+1+b];
+                    //th = similarityB_star[offsetB + B_i+1+b+1];
+                    //H[r][c] += th;
+                    //total_hits += th;
+
+                    if (r > maxA) {maxA = r;}
+                    if (r < minA) {minA = r;}
+                    if (c > maxB) {maxB = c;}
+                    if (c < minB) {minB = c;}
+                    //H[*(simPtrA + A_i)][*(simPtrB + 2*B_i)] += *(simPtrB + 2*B_i+1);
                 }
             }
+            //A_i += numSimA+1;
+            //B_i += 2*numSimB+1;
+            simPtr1 += numSimA;
+            simPtr2 += numSimB*2;
+            prot_index += 1;
         }
-    }   
+    }
+    //int prot_index = 0;
+    //int A_i = 0, B_i = 0; // indexes
+    //int a = 0, b = 0; // counters
+    //int offsetA = 1 + (seq1_length * (num_org + 1)) + 1;
+    //int offsetB = 1 + (seq2_length * (num_org + 1)) + 1;
+    //unsigned int numSimA = 0, numSimB = 0;
+    //unsigned int total_hits = 0;
+    //unsigned int  r = 0, c = 0, th = 0;
+    //unsigned int minA = 0, minB = 0, maxA = 0, maxB = 0;
+    //if (seq1_length >= WINDOW_SIZE && seq2_length >= WINDOW_SIZE) {
+    //    while (prot_index < seq1_numProt) {
+    //        numSimA = similarityA[offsetA + A_i];
+    //        numSimB = similarityB_star[offsetB + B_i];
 
-    #ifdef EXPORT_MATRICES
-        char filename[128];
-        sprintf(filename, "%s - %s.mat", (*names)[work->a], (*names)[work->b]);
-        FILE* matrix_file = fopen(filename, "w");
+    //        for (a = 0; a < numSimA; a++) {
+    //            for (b = 0; b < (2*numSimB); b++) {
+    //                if ((b % 2) == 1) {
+    //                    continue;
+    //                }
+    //                
+    //                r = similarityA[offsetA + A_i+1+a];
+    //                c = similarityB_star[offsetB + B_i+1+b];
+    //                th = similarityB_star[offsetB + B_i+1+b+1];
+    //                H[r][c] += th;
+    //                total_hits += th;
 
-        for (row = 0; row < (seq1_length - WINDOW_SIZE + 1); row++) {
-            for (col = 0; col < (seq2_length - WINDOW_SIZE + 1); col++) {
-                fprintf(matrix_file, "%d ", H[row][col]);
-            }
-            fprintf(matrix_file, "\n");
-        }
-        fclose(matrix_file);
-    #endif
+    //                if (r > maxA) {maxA = r;}
+    //                if (r < minA) {minA = r;}
+    //                if (c > maxB) {maxB = c;}
+    //                if (c < minB) {minB = c;}
+    //                //H[*(simPtrA + A_i)][*(simPtrB + 2*B_i)] += *(simPtrB + 2*B_i+1);
+    //            }
+    //        }
+    //        A_i += numSimA+1;
+    //        B_i += 2*numSimB+1;
+    //        //simPtrA += numSimA;
+    //        //simPtrB += numSimB*2;
+    //        prot_index += 1;
+    //    }
+    //}
+
+    //#ifdef EXPORT_MATRICES
+    //    char filename[128];
+    //    sprintf(filename, "%s - %s.mat", (*names)[work->a], (*names)[work->b]);
+    //    FILE* matrix_file = fopen(filename, "w");
+    //#endif
+
+
+    //#ifdef EXPORT_MATRICES
+    //    for (row = 0; row < (seq1_length - WINDOW_SIZE + 1); row++) {
+    //        for (col = 0; col < (seq2_length - WINDOW_SIZE + 1); col++) {
+    //            fprintf(matrix_file, "%d ", H[row][col]);
+    //        }
+    //        fprintf(matrix_file, "\n");
+    //    }
+    //    fclose(matrix_file);
+    //#endif
 
     int cnt=0, max=0;
     double sum=0.0, avg=0.0, avgPreFilter=0.0, avgPreFilterOld=0.0;
@@ -643,26 +747,43 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
 
             int hits = H[row][col];
             total_hits2 += hits;
-            unsigned int sim_cnt2 = similarityB[1+ (col * (num_org+1))];
+            unsigned int sim_cnt2 = similarityB_star[1+ (col * (num_org+1))];
 
             if (hits) {
                 avgPreFilterOld += hits * ((uint64_t)1000) /
                                     ((uint64_t)sim_cnt1 * (uint64_t)sim_cnt2);
                 
-                uint64_t norm_fact = find_normalization_factor(&similarityA[1+(row*(num_org+1))], &similarityB[1+(col*(num_org+1))], pairs_list, pairs_list_size);
+                uint64_t norm_fact = find_normalization_factor(&similarityA[1+ (row * (num_org+1))], &similarityB_star[1+ (col * (num_org+1))], pairs_list, pairs_list_size);
 
-                // Should never happen, but can sometimes if files aren't copied properly. This prevents divide by zero error
                 if (norm_fact == 0) {
-                    norm_fact = 100000;
-                    //fprintf(stderr, "Major Issues with %s, %s at row=%d,col=%d\n", (*names)[work->a],(*names)[work->b], row,col);
-                    //exit(-1);
+                    fprintf(stderr, "Major Issues with %s, %s at row=%d,col=%d\n", (*names)[work->a],(*names)[work->b], row,col);
+                    exit(-1);
                 }
                 avgPreFilter += hits * ((uint64_t)1000) /
                                     ( norm_fact);
+                //avgPreFilter += hits * ((uint64_t)1000) /
+                //                    ( find_normalization_factor(&similarityA[1+ (row * (num_org+1))], &similarityB_star[1+ (col * (num_org+1))], pairs_list, pairs_list_size) );
+                //#ifdef EXPORT_MATRICES
+                //    fprintf(matrix_file, "%d ", hits * ((uint64_t)1000) / ((uint64_t)sim_cnt1 * (uint64_t)sim_cnt2));
+                //#endif
             } else {
                 ;
+                //#ifdef EXPORT_MATRICES
+                //    fprintf(matrix_file, "%d ", 0);
+                //#endif
             }
         }
+        //#ifdef EXPORT_MATRICES
+        //    fprintf(matrix_file, "\n");
+        //#endif
+    }
+   // #ifdef EXPORT_MATRICES
+   //     fclose(matrix_file);
+   // #endif
+    if (total_hits != total_hits2 || maxB > seq2_length || maxA > seq1_length) {
+        //fprintf(stderr, "Issues with %s, %s at hits1=%d,hits2=%d\n", (*names)[work->a],(*names)[work->b], total_hits, total_hits2);
+        fprintf(stderr, "Issues with %s, %s. hits1=%d, hits2 = %d, len1 = %d, len2=%d, minA = %u, minB = %u, maxA = %u, maxB = %u\n, on node", (*names)[work->a],(*names)[work->b], total_hits, total_hits2, seq1_length, seq2_length,minA,minB,maxA,maxB);
+        //exit(-1);
     }
 
     if (cnt != 0) {
@@ -770,6 +891,7 @@ void load_packets(data*** packets, int* remaining_packets, char* file_name,
 
     if (fscanf(datafile, "%lg\n", &total_work) < 0) {
         fprintf(stderr, "ERROR: Cannot read input file.\n");
+        fprintf(stderr,"MARK 1\n"); //debugging - delete
         exit(-1);
     }
 
@@ -797,6 +919,7 @@ void load_packets(data*** packets, int* remaining_packets, char* file_name,
             int a,b;
             if (fscanf(datafile, "%d\t%d\n", &a, &b) < 0) {
                 fprintf(stderr, "ERROR: Cannot read input file.\n");
+                fprintf(stderr,"MARK 2\n"); //debugging - delete
                 exit(-1);
             }
             data new_data = { a, b, 0, 0.0 };
@@ -816,6 +939,7 @@ void load_packets(data*** packets, int* remaining_packets, char* file_name,
             int a,b;
             if (fscanf(datafile, "%d\t%d\n", &a, &b) < 0) {
                 fprintf(stderr, "ERROR: Cannot read input file.\n");
+                fprintf(stderr,"MARK 3\n"); //debugging - delete
                 exit(-1);
             }
             data new_data = { a, b, 0, 0.0 };
@@ -1018,12 +1142,31 @@ FILE *safe_fopen(char *filename, char *mode) { //CAT'S
     return filePtr;
 }
 
-void readSimilarity(unsigned int *similarity, char *proteinName) { //CAT'S
+void readSimilarityNew(unsigned int *similarity, char *proteinName) { //CAT'S
     char fileName[128];
     FILE *filePtr;
     size_t numRead;
 
     sprintf(fileName, "%s/%s.db", PIPE_DB_DIR, proteinName);
+    filePtr = safe_fopen(fileName, "r");
+
+    numRead = fread(similarity, sizeof(unsigned int), MAX_DB_FILE, filePtr);
+
+    if (numRead <= 0 || !feof(filePtr)) {
+        fprintf(stderr, "ERROR: problem reading DB file %s (too big?)\n",
+                    fileName);
+        exit(1);
+    }
+
+    fclose(filePtr);
+}
+
+void readSimilarityStar(unsigned int *similarity, char *proteinName) { //CAT'S
+    char fileName[128];
+    FILE *filePtr;
+    size_t numRead;
+
+    sprintf(fileName, "%s/%s.db_star", PIPE_DB_DIR, proteinName);
     filePtr = safe_fopen(fileName, "r");
 
     numRead = fread(similarity, sizeof(unsigned int), MAX_DB_FILE, filePtr);
