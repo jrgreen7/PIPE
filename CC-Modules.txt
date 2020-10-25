@@ -1,0 +1,9 @@
+iCurrently Loaded Modules:
+  1) nixpkgs/16.09 (S)   2) imkl/11.3.4.258 (math)   3) gcccore/.5.4.0 (H)   4) icc/.2016.4.258 (H)   5) ifort/.2016.4.258 (H)   6) intel/2016.4 (t)   7) openmpi/2.1.1 (m)   8) StdEnv/2016.4 (S)
+
+  Where:
+   S:     Module is Sticky, requires --force to unload or purge
+   m:     MPI implementations / Implémentations MPI
+   math:  Mathematical libraries / Bibliothèques mathématiques
+   t:     Tools for development / Outils de développement
+   H:                Hidden Module
