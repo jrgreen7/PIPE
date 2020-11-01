@@ -1,3 +1,18 @@
 *.db
 *.db_star
 *.out
+
+# PIPE4
+PIPE4/**/.vscode/
+PIPE4/**/*.o
+PIPE4/**/*.sub
+PIPE4/data
+
+*.log
+
+# DEEP-Pipe
+Deep-PIPE-Sites/**/.vscode/
+Deep-PIPE-Sites/**/.ipynb_checkpoints/
+Deep-PIPE-Sites/data/
+
+*.code-workspace
