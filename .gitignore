@@ -9,3 +9,10 @@ PIPE4/**/*.sub
 PIPE4/data
 
 *.log
+
+# DEEP-Pipe
+Deep-PIPE-Sites/**/.vscode/
+Deep-PIPE-Sites/**/.ipynb_checkpoints/
+Deep-PIPE-Sites/data/
+
+*.code-workspace
