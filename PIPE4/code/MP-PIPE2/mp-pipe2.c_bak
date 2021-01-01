@@ -64,10 +64,10 @@ static const int PACKET_SIZE = 1000;
 int THREADS = 2;
 
 //CAT'S constants
-#define MAX_DB_FILE 3057436
-#define NUM_SET_BITS 21120
-#define MAX_PROTEIN_LEN 14507
-#define MAX_NEIGHBOURS 121
+#define MAX_DB_FILE 461536
+#define NUM_SET_BITS 6080
+#define MAX_PROTEIN_LEN 4910
+#define MAX_NEIGHBOURS 362
 
 //******
 //PIPE-Sites constants

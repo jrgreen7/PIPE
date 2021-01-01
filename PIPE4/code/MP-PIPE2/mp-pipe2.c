@@ -50,12 +50,13 @@ To Run:
 //#define PRELOAD_DB
 //#define ENABLE_LOOCV
 #define EXPORT_MATRICES
+#define EXPORT_SW_MATRIX //Kevin: Added to export SW matrix
 //#define LOCALIZE_DB
 
 #define WORKTAG 1
 #define DIETAG 2
 #define SMALL_PACKET_TAG 3
-#define DATA_SIZE sizeof(data)
+#define DATA_SIZE sizeof(data)  //K: Double memory for SW mat??
 static const int WINDOW_SIZE = 20;
 static const int FILTER_SIZE = 3;
 static const double THRESHOLD = 0;
@@ -63,10 +64,10 @@ static const int PACKET_SIZE = 1000;
 int THREADS = 2;
 
 //CAT'S constants
-#define MAX_DB_FILE 0
-#define NUM_SET_BITS 21120
-#define MAX_PROTEIN_LEN 14507
-#define MAX_NEIGHBOURS 121
+#define MAX_DB_FILE 461532
+#define NUM_SET_BITS 6080
+#define MAX_PROTEIN_LEN 4910
+#define MAX_NEIGHBOURS 362
 
 //******
 //PIPE-Sites constants
@@ -114,7 +115,7 @@ void master(char*, char*);
 void slave();
 void do_work(char***, MPI_Datatype);
 int run_pipe(Interaction*, data*, char***, unsigned int**,
-                unsigned int**, unsigned int*, unsigned int*, int, const training_pair [], unsigned int pairs_list_size,
+                unsigned int**, double**, unsigned int*, unsigned int*, int, const training_pair [], unsigned int pairs_list_size,
                 unsigned int num_org);
 void load_packets(data***, int*, char*, int*, data**);
 void merge_results(data**, data**, int*, int);
@@ -322,6 +323,17 @@ void free_matrix(unsigned int **matrix) {
     matrix = NULL;
 }
 
+// Kevin:  Added to Free the SW Matrix
+void free_matrix_sw(double **matrix) {
+	    int i;
+	    for(i=0; i<MAX_PROTEIN_LEN; i++){
+		free(matrix[i]);
+		matrix[i] = NULL;
+	    }
+	    free(matrix);
+	    matrix = NULL;
+}
+
 void do_work(char*** names, MPI_Datatype data_type) {
 
     int numProteins, numPairs, check = 1, work_remaining = 0, results_size = 0;
@@ -410,16 +422,19 @@ void do_work(char*** names, MPI_Datatype data_type) {
 
     #pragma omp parallel default(shared) private (work,i,j) num_threads(THREADS)
     {
-        //CAT'S
+        //CAT'S & Kevin SW Mat Output
         unsigned int **H, **one;
+	double **SW; // K: SW matrix
         unsigned int *similarityA, *similarityB;
 
         H = (unsigned int**) malloc(MAX_PROTEIN_LEN *
                                         sizeof(unsigned int*));
         one = (unsigned int**) malloc(MAX_PROTEIN_LEN *
                                         sizeof(unsigned int*));
+	SW = (double**) malloc(MAX_PROTEIN_LEN *
+					sizeof(double*));
 
-        if (H == NULL || one == NULL) {
+        if (H == NULL || one == NULL || SW == NULL) {
             fprintf(stderr, "ERROR: Cannot allocate memory ");
             fprintf(stderr, "for PIPE matrices.\n");
             exit(-1);
@@ -430,8 +445,10 @@ void do_work(char*** names, MPI_Datatype data_type) {
                                                 sizeof(unsigned int));
             one[i] = (unsigned int*) malloc(MAX_PROTEIN_LEN *
                                                 sizeof(unsigned int));
+	    SW[i] = (double*) malloc(MAX_PROTEIN_LEN *
+			    			sizeof(double));
 
-            if (H[i] == NULL || one[i] == NULL) {
+            if (H[i] == NULL || one[i] == NULL || SW[i] == NULL) {
                 fprintf(stderr, "ERROR: Cannot allocate memory ");
                 fprintf(stderr, "for PIPE matrices.\n");
                 exit(-1);
@@ -440,6 +457,7 @@ void do_work(char*** names, MPI_Datatype data_type) {
             for(j=0; j<(MAX_PROTEIN_LEN); j++) {
                 H[i][j] = 0;
                 one[i][j] = 0;
+		SW[i][j] = 0.0;
             }
         }
 
@@ -499,7 +517,7 @@ void do_work(char*** names, MPI_Datatype data_type) {
                     similarityB = &(db[work.b * MAX_DB_FILE]);
                 #endif
 
-                if (run_pipe(InteractionsList, &work, names, H, one,
+                if (run_pipe(InteractionsList, &work, names, H, one, SW,
                             similarityA, similarityB, numPairs, pairs_list, pairs_list_size, num_org)) {
                     #pragma omp critical (edit_results)
                     {
@@ -512,6 +530,7 @@ void do_work(char*** names, MPI_Datatype data_type) {
         }
         free_matrix(one);
         free_matrix(H);
+	free_matrix_sw(SW);
         #ifndef PRELOAD_DB
             free(similarityA);
             similarityA = NULL;
@@ -539,7 +558,7 @@ void do_work(char*** names, MPI_Datatype data_type) {
 }
 
 int run_pipe(Interaction* InteractionsList, data* work, char*** names,
-                unsigned int** H, unsigned int** one,
+                unsigned int** H, unsigned int** one, double** SW,
                 unsigned int* similarityA, unsigned int* similarityB,
                 int numPairs, const training_pair pairs_list [], unsigned int pairs_list_size,
                 unsigned int num_org) {
@@ -553,6 +572,7 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
     unsigned int sim_cnt1; //CAT'S
     static struct timeval tv;
     static struct timezone tz;
+
 
     // COMMENT OUT IN PARALLEL
     printf("%s\t%s\t\t%d\t%d\n", (*names)[work->a],
@@ -660,11 +680,30 @@ int run_pipe(Interaction* InteractionsList, data* work, char*** names,
                 }
                 avgPreFilter += hits * ((uint64_t)1000) /
                                     ( norm_fact);
+
+		// Kevin: Adding to the SW Landscape
+		SW[row][col] = hits * ((double)1000) / ((double)norm_fact);
+
             } else {
                 ;
             }
         }
     }
+    
+    // Kevin: Adding SW Matrix Output
+    #ifdef EXPORT_SW_MATRIX
+    char swfilename[128];
+    sprintf(swfilename, "%s-%s_SW.mat", (*names)[work->a], (*names)[work->b]);
+    FILE* swmatrix_file = fopen(swfilename, "w");
+    for (row = 0; row < (seq1_length - WINDOW_SIZE + 1); row++) {
+    	for (col = 0; col < (seq2_length - WINDOW_SIZE + 1); col++) {
+		fprintf(swmatrix_file, "%f ", SW[row][col]);
+	}
+	fprintf(swmatrix_file, "\n");
+    }
+    fclose(swmatrix_file);
+    #endif
+
 
     if (cnt != 0) {
         avg = sum / (double) cnt;

@@ -2,7 +2,7 @@
 
 #include "PIPE.h"
 
-//#define PROTEIN_SEQ_FILE "./data/protein_sequences.txt"
+//#define PROTEIN_SEQ_FILE "/home/williamm/projects/def-jrgreen/williamm/Deep-PIPE-Sites/PIPE4/data/protein_sequences.txt"
 
 char* PROTEIN_SEQ_FILE;
 char* DBDIR;
@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
 
 		if (seqSize > MAX_PROTEIN_LEN) {
 			fprintf(stderr, "ERROR: %d length (%d) > MAX_PROTEIN_LEN\n", seqSize, MAX_PROTEIN_LEN);
+			// printf("proSeqPair.col2: %s", proSeqPair.col2);
 			exit(-1);
 		}
 

@@ -14,9 +14,9 @@
 
 /* Constant Defines used throughout code */
 #define MAX_LINE_LEN 24277
-#define MAX_PROTEIN_LEN 24177
-#define MAX_NUM_PROTEINS 151824
-#define MAX_NEIGHBOURS 3000
+#define MAX_PROTEIN_LEN 4910
+#define MAX_NUM_PROTEINS 6049
+#define MAX_NEIGHBOURS 362
 #define W 20       /* Length of segment */
 #define SCORE 35  /* PAM Score threshold */
 
