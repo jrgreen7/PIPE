@@ -7,7 +7,7 @@ Autosubmits jobs to the Cedar queue.
 import os
 from time import sleep 
 
-base_dir = '/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/'
+base_dir = '/home/williamm/projects/def-jrgreen/williamm/Deep-PIPE-Sites/PIPE4/'
 sub_dir  = base_dir + 'submissions/'
 land_dir = base_dir + 'landscapes/'
 SLEEP    = 5

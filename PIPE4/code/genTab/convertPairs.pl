@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 
-$SEQ_FILE="data/protein_sequences.txt";
-$STR_PAIR_FILE="data/protein_pairs.txt";
-$IDX_PAIR_FILE="data/protein_pairs_index.txt";
+$SEQ_FILE="/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/data/protein_sequences.txt";
+$STR_PAIR_FILE="/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/data/protein_pairs.txt";
+$IDX_PAIR_FILE="/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/data/protein_pairs_index.txt";
 
 open(SEQFILE, $SEQ_FILE);
 $numProteins=0;
