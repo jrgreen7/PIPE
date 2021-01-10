@@ -14,5 +14,8 @@ PIPE4/data
 Deep-PIPE-Sites/**/.vscode/
 Deep-PIPE-Sites/**/.ipynb_checkpoints/
 Deep-PIPE-Sites/data/
+Deep-PIPE-Sites/models/
 
 *.code-workspace
+
+
