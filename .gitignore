@@ -1,6 +1,8 @@
 *.db
 *.db_star
 *.out
+*.tar
+*.tar.gz
 
 # PIPE4
 PIPE4/**/.vscode/
@@ -15,6 +17,9 @@ Deep-PIPE-Sites/**/.vscode/
 Deep-PIPE-Sites/**/.ipynb_checkpoints/
 Deep-PIPE-Sites/data/
 Deep-PIPE-Sites/models/
+Deep-PIPE-Sites/tf_models/protoc-3.4.0-win32
+Deep-PIPE-Sites/PyTorch-YOLOv3/
+
 
 *.code-workspace
 
