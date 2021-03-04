@@ -1,0 +1,28 @@
+# CB6105 Machine
+cb6105-dna-26
+# THE DEHNE CLUSTER
+##server
+##desk01 slots=8
+##desk02 slots=8
+##desk03
+#desk04 slots=1
+##desk05
+##desk06 slots=8
+#node01 slots=1
+#node02 slots=1
+#node03 slots=1
+#node04 slots=1
+#node05 slots=1
+#node06 slots=1
+#node07 slots=1
+#node08 slots=1
+#node09 slots=1
+#node10 slots=1
+#node11 slots=1
+#node12 slots=1
+##node13 slots=2
+#node14 slots=1
+#node15 slots=1
+#node16 slots=1
+#node17 slots=1
+#node18 slots=1
