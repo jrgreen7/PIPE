@@ -21,6 +21,8 @@ Deep-PIPE-Sites/tf_models/protoc-3.4.0-win32
 Deep-PIPE-Sites/PyTorch-YOLOv3/
 
 
+
+**/.vscode/
 *.code-workspace
 
 

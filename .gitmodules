@@ -1,3 +1,9 @@
 [submodule "Deep-PIPE-Sites/tf_models/models"]
 	path = Deep-PIPE-Sites/tf_models/models
 	url = https://github.com/williamrobotma/models.git
+[submodule "Deep-PIPE-Sites/yolo_v3"]
+	path = Deep-PIPE-Sites/yolo_v3
+	url = https://github.com/williamrobotma/yolo_v3.git
+[submodule "Deep-PIPE-Sites/simple-faster-rcnn-pytorch"]
+	path = Deep-PIPE-Sites/simple-faster-rcnn-pytorch
+	url = https://github.com/williamrobotma/simple-faster-rcnn-pytorch.git
