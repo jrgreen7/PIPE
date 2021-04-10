@@ -6,28 +6,28 @@
 
 import pandas as pd
 import numpy as np
-# import matplotlib.pyplot as plt
-# import seaborn as sns
+import matplotlib.pyplot as plt
+import seaborn as sns
 import re
 
 
 # In[45]:
 
 
-pfam_file = '/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/pfam_yeast_domains.tsv' # http://pfam.xfam.org/proteome/559292#tabview=tab2
-# biogrid_file = "data/BIOGRID-ORGANISM-Saccharomyces_cerevisiae_S288c-4.2.191.tab3.txt"
-threedid_file = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/3did_flat_Apr_10_2020.dat" # from https://3did.irbbarcelona.org/download.php
-# uniprot_file = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/uniprot-proteome UP000002311.tab"# reference proteome at https://www.uniprot.org/proteomes/UP000002311
-pp_CD_Hit = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/yeast_pp_CDHit.tsv"
-protein_sequence = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/uniprot-proteome_UP000002311_stripped.fasta"
+pfam_file = 'data/pfam_yeast_domains.tsv' # http://pfam.xfam.org/proteome/559292#tabview=tab2
+biogrid_file = "data/BIOGRID-ORGANISM-Saccharomyces_cerevisiae_S288c-4.2.191.tab3.txt"
+threedid_file = "data/3did_flat_Apr_10_2020.dat" # from https://3did.irbbarcelona.org/download.php
+uniprot_file = "data/uniprot-proteome UP000002311.tab"# reference proteome at https://www.uniprot.org/proteomes/UP000002311
+pp_CD_Hit = "data/conservative_data/yeast_pp_CDHit.tsv"
+protein_sequence = "data/uniprot-proteome_UP000002311_stripped.fasta"
 # general proteome (reviewed S. cerevisiae) at https://www.uniprot.org/uniprot/?query=taxonomy:%22Saccharomyces%20cerevisiae%20(strain%20ATCC%20204508%20/%20S288c)%20(Baker%27s%20yeast)%20[559292]%22&fil=organism%3A%22Saccharomyces+cerevisiae+%28strain+ATCC+204508+%2F+S288c%29+%28Baker%27s+yeast%29+%5B559292%5D%22+AND+reviewed%3Ayes
 split_homologous = True
 pfam_domains_only = False
 single_domain_only = True
 max_interaction_area = 0.5
 
-save_file_path = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/yeast_masks_singlesite_area_50_filtered.pkl"
-pipe_query_save_path = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/yeast_singlesite__area_50_filtered_PIPE_query.txt"
+save_file_path = "data/yeast_masks_singlesite_area_50_filtered.pkl"
+pipe_query_save_path = "data/yeast_singlesite__area_50_filtered_PIPE_query.txt"
 
 
 # # Import PFAM data
@@ -61,8 +61,8 @@ else:
 
 
 # convert indices to int
-pfam['envelope start'] = pfam['envelope start'].round(0).astype(int)
-pfam['envelope end'] = pfam['envelope end'].round(0).astype(int)
+pfam['envelope start'] = pfam['envelope start'].round(0).astype(np.int)
+pfam['envelope end'] = pfam['envelope end'].round(0).astype(np.int)
 
 
 # ### Create map of sequence IDs and their indices
