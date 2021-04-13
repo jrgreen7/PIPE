@@ -1,0 +1,19 @@
+-f /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/avx2
+-f /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/gentoo/generic
+-f /cvmfs/soft.computecanada.ca/custom/python/wheelhouse/generic
+future==0.18.2
+joblib==1.0.1
+json5==0.9.5
+numpy==1.20.1
+pandas==1.2.3
+Pillow==8.1.2
+python-dateutil==2.8.1
+pytz==2021.1
+scikit-learn==0.24.1
+scipy==1.6.0
+six==1.15.0
+threadpoolctl==2.1.0
+torch==1.7.1
+torchaudio==0.7.2
+torchvision==0.8.2
+typing-extensions==3.7.4.3

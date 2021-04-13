@@ -15,9 +15,10 @@ from scipy import ndimage
 from torchvision import transforms
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-dataset_dir = 'yeast_processed_norm_area_50'
-model_dir = 'unet2D'
-normalize = False
+dataset_dir = 'yeast_processed_log_norm_area_50'
+model_dir = 'unet2D_aug_norm'
+normalize = True
+
 
 ## TODO: refactor into a transforms file
 ## Define Transforms
@@ -171,6 +172,7 @@ class UNet2D(nn.Module):
         self.out = self.out_tr(self.out_up_64)
 
         return self.out
+
 
 
 print(f"Loading model at ../models/{model_dir}/{dataset_dir}/best_model.pth")
