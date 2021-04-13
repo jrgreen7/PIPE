@@ -1,6 +1,8 @@
 *.db
 *.db_star
 *.out
+*.tar
+*.tar.gz
 
 # PIPE4
 PIPE4/**/.vscode/
@@ -15,7 +17,25 @@ Deep-PIPE-Sites/**/.vscode/
 Deep-PIPE-Sites/**/.ipynb_checkpoints/
 Deep-PIPE-Sites/data/
 Deep-PIPE-Sites/models/
+Deep-PIPE-Sites/tf_models/protoc-3.4.0-win32
+Deep-PIPE-Sites/PyTorch-YOLOv3/
 
+
+
+**/.vscode/
 *.code-workspace
 
 
+# Deep-PIPE-Sites/preprocessing/pssm/
+# !Deep-PIPE-Sites/preprocessing/pssm/fastas/runPsiBlast.sh
+# !Deep-PIPE-Sites/preprocessing/pssm/fastas/blastall.sh
+Deep-PIPE-Sites/preprocessing/pssm/fastas/*.fasta
+Deep-PIPE-Sites/preprocessing/pssm/fastas/*.out
+Deep-PIPE-Sites/preprocessing/pssm/fastas/blastall.cmds
+Deep-PIPE-Sites/preprocessing/pssm/fastas/parallel.log
+Deep-PIPE-Sites/preprocessing/pssm/pssms
+Deep-PIPE-Sites/preprocessing/pssm/swissprot
+# Deep-PIPE-Sites/preprocessing/pssm/uniprot-proteome UP000002311.fasta
+Deep-PIPE-Sites/preprocessing/pssm/*.fasta
+PIPE4/landscapes/yeast-yeast
+PIPE4/input/yeast-yeast.in
