@@ -8,8 +8,8 @@
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+# import matplotlib.pyplot as plt
+# import seaborn as sns
 import re
 import os
 import json
@@ -18,12 +18,12 @@ import json
 # In[2]:
 
 
-masks_path = "data/yeast_masks_singlesite_area_50_filtered.pkl"
-uniprot_file = "data/uniprot-proteome UP000002311.tab"# reference proteome at https://www.uniprot.org/proteomes/UP000002311
-pssm_path = "data/yeast_pssms/"
+masks_path = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/yeast_masks_singlesite_area_50_filtered.pkl"
+uniprot_file = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/uniprot-proteome UP000002311.tab"# reference proteome at https://www.uniprot.org/proteomes/UP000002311
+pssm_path = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/preprocessing/pssm/pssms/"
 
-processed_data_path = "data/yeast_processed_log_norm_area_50/"
-PIPE_dir = "data/PIPE_output/landscapes/yeast-yeast/"
+processed_data_path = "/home/williamm/scratch/final-wrap-up/PIPE/Deep-PIPE-Sites/data/yeast_processed_log_norm_area_50/"
+PIPE_dir = "/home/williamm/scratch/final-wrap-up/PIPE/PIPE4/landscapes/yeast-yeast/"
 
 # Find the max and min values across entire set and naively normoalize it with the assumption that the domain of the set is the domain of all possible data
 NORM = True
@@ -50,13 +50,13 @@ load_params_path = processed_data_path + 'min_maxes.json'
 
 
 ppi_masks = pd.read_pickle(masks_path)
-ppi_masks.head()
+# ppi_masks.head()
 
 
 # In[4]:
 
 
-ppi_masks.shape
+print(ppi_masks.shape)
 
 
 # In[5]:
@@ -64,7 +64,7 @@ ppi_masks.shape
 
 # All the protein sequences we need information for
 proteins = ppi_masks['Uniprot ID A'].append(ppi_masks['Uniprot ID B'], ignore_index=True).unique()
-proteins, proteins.shape
+print(proteins, proteins.shape)
 
 
 # ## Load sequences
@@ -75,7 +75,7 @@ proteins, proteins.shape
 uniprot_df = pd.read_csv(uniprot_file,
                         sep = "\t", index_col='Entry')
 print("Loaded UniProt proteome")
-uniprot_df
+# uniprot_df
 
 
 # Create naive storage of min/max values for normalization
@@ -193,7 +193,7 @@ if NORM:
 
 
 ppi_masks['PSSM_masks'] = PSSM_masks
-ppi_masks
+# ppi_masks
 
 
 # In[15]:
@@ -407,7 +407,7 @@ if NORM:
 
 ppi_masks['PIPE_landscape'] = PIPE_landscape
 ppi_masks['PIPE_landscape_SW'] = PIPE_landscape_SW
-ppi_masks
+# ppi_masks
 
 
 # In[27]:
@@ -440,41 +440,41 @@ ppi_masks.iloc[839]
 # In[29]:
 
 
-import matplotlib.pyplot as plt
-from matplotlib import cm
-query=839
-fig, axs = plt.subplots(5, figsize=(15,10))
-ax1 = axs[0].matshow(ppi_masks.PIPE_landscape.iloc[query])
-axs[0].set_title('PIPE Landscape')
-axs[0].set_ylabel('Position along Sequence A')
-axs[0].set_xlabel('Position along Sequence B')
-ax2 = axs[1].matshow(ppi_masks.PIPE_landscape_SW.iloc[query])
-axs[1].set_title('PIPE Similarity-Weighted Adjusted Landscape')
-axs[1].set_ylabel('Position along Sequence A')
-axs[1].set_xlabel('Position along Sequence B')
-ax3 = axs[2].matshow(ppi_masks.position_landscape.iloc[query])
-axs[2].set_title('Position Landscape')
-axs[2].set_ylabel('Position along Sequence A')
-axs[2].set_xlabel('Position along Sequence B')
-ax4 = axs[3].matshow(ppi_masks.PSSM_masks.iloc[query])
-axs[3].set_title('PSSM Landscape')
-axs[3].set_ylabel('Position along Sequence A')
-axs[3].set_xlabel('Position along Sequence B')
-ax5 = axs[4].matshow(ppi_masks['Sites Masks'].iloc[query])
-axs[4].set_ylabel('Position along Sequence A')
-axs[4].set_title('Interaction Site Mask')
-axs[4].set_xlabel('Position along Sequence B')
+# import matplotlib.pyplot as plt
+# from matplotlib import cm
+# query=839
+# fig, axs = plt.subplots(5, figsize=(15,10))
+# ax1 = axs[0].matshow(ppi_masks.PIPE_landscape.iloc[query])
+# axs[0].set_title('PIPE Landscape')
+# axs[0].set_ylabel('Position along Sequence A')
+# axs[0].set_xlabel('Position along Sequence B')
+# ax2 = axs[1].matshow(ppi_masks.PIPE_landscape_SW.iloc[query])
+# axs[1].set_title('PIPE Similarity-Weighted Adjusted Landscape')
+# axs[1].set_ylabel('Position along Sequence A')
+# axs[1].set_xlabel('Position along Sequence B')
+# ax3 = axs[2].matshow(ppi_masks.position_landscape.iloc[query])
+# axs[2].set_title('Position Landscape')
+# axs[2].set_ylabel('Position along Sequence A')
+# axs[2].set_xlabel('Position along Sequence B')
+# ax4 = axs[3].matshow(ppi_masks.PSSM_masks.iloc[query])
+# axs[3].set_title('PSSM Landscape')
+# axs[3].set_ylabel('Position along Sequence A')
+# axs[3].set_xlabel('Position along Sequence B')
+# ax5 = axs[4].matshow(ppi_masks['Sites Masks'].iloc[query])
+# axs[4].set_ylabel('Position along Sequence A')
+# axs[4].set_title('Interaction Site Mask')
+# axs[4].set_xlabel('Position along Sequence B')
 
 
-plt.colorbar(ax1, ax=axs[0])
-plt.colorbar(ax2, ax=axs[1])
-plt.colorbar(ax3, ax=axs[2])
-plt.colorbar(ax4, ax=axs[3])
-plt.colorbar(ax5, ax=axs[4])
+# plt.colorbar(ax1, ax=axs[0])
+# plt.colorbar(ax2, ax=axs[1])
+# plt.colorbar(ax3, ax=axs[2])
+# plt.colorbar(ax4, ax=axs[3])
+# plt.colorbar(ax5, ax=axs[4])
 
-fig.tight_layout() # Or equivalently,  "plt.tight_layout()"
+# fig.tight_layout() # Or equivalently,  "plt.tight_layout()"
 
-plt.show()
+# plt.show()
 
 
 # # Save
@@ -531,19 +531,19 @@ test_df, val_df = train_test_split(holdout_df, test_size=0.5, random_state=789)
 # In[36]:
 
 
-train_df
+# train_df
 
 
 # In[37]:
 
 
-test_df
+# test_df
 
 
 # In[38]:
 
 
-val_df
+# val_df
 
 
 # In[40]:
@@ -663,7 +663,7 @@ for UA, UB, DPA, DPB in zip(val_df['Uniprot ID A'],
                             val_df['Domain positions A'], 
                             val_df['Domain positions B']):
     val_coords[f'{UA}_{UB}'] = DPA + DPB
-test_coords
+# test_coords
 
 
 # In[46]:
@@ -671,7 +671,8 @@ test_coords
 
 # json doesn't like numpy
 def convert(o):
-    if isinstance(o, np.int32): return int(o)  
+    if isinstance(o, np.int32) or isinstance(o, np.int64): return int(o)
+    print(type(o))  
     raise TypeError
     
 with open(processed_data_path + 'test/coords.json','w') as f:
@@ -699,7 +700,7 @@ train_df = pd.read_pickle(processed_data_path + 'train.pkl')
 # In[49]:
 
 
-train_df
+# train_df
 
 
 # In[50]:
@@ -737,7 +738,7 @@ def std_col(series, mean):
 
 avs = [ave_col(train_df.PSSM_masks), ave_col(train_df.position_landscape), ave_col(train_df.PIPE_landscape), ave_col(train_df.PIPE_landscape_SW)]
 stds = [std_col(train_df.PSSM_masks, avs[0]), std_col(train_df.position_landscape, avs[1]), std_col(train_df.PIPE_landscape, avs[2]), std_col(train_df.PIPE_landscape_SW, avs[3])]
-avs, stds
+print(avs, stds)
 
 
 # In[52]:
