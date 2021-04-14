@@ -14,7 +14,7 @@ import glob
 
 jobs = ['yeast']
 
-base_dir = '/home/williamm/scratch/Deep-PIPE-Sites/PIPE4' # do not include trailing slash
+base_dir = '/home/williamm/scratch/final-wrap-up/PIPE/PIPE4/' # do not include trailing slash
 
 for job_id in jobs:
     print 'Running Setup for Job: ' + job_id
