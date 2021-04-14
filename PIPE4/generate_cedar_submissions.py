@@ -15,7 +15,7 @@ JOB_TIME       = '00:30:00'
 
 job_id = 'cvd'#'ep4'#'hivhiv' #'hivhiv' #'hs-hiv' #'soyV4-human' #'soyV4-scnV2' #'soyV2-human' #'soyV2-soyV2' #'soyV2-scnV2'
 
-data_dir = '/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/'
+data_dir = '/home/williamm/scratch/final-wrap-up/PIPE/PIPE4/'
 code_dir = data_dir + 'code/'
 
 # Read in the list of completed job
@@ -39,7 +39,7 @@ for i in inputs:
 	
 	# Submission Header
 	f.write('\n'.join(['#!/bin/bash',
-                           '#SBATCH --account=ctb-jrgreen', # Ensure we use the Cedar Covid Allocation 
+                           '#SBATCH --account=def-jrgreen', # Ensure we use the Cedar Covid Allocation 
                            '#SBATCH --job-name=pipe4-' + i + '-o2a',
                            '#SBATCH --output=' + data_dir + 'logs/' + i + '.log',
                            '#SBATCH --mem=' + str(MEM_PER_THREAD),

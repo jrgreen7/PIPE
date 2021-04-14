@@ -8,7 +8,7 @@ NOTE: LOADS A STATUS.DB FILE FOR EACH JOB WITH THE SPECIFIC EXCLUSIONS...
 """
 from multiprocessing import Pool, cpu_count
 
-org_dir = '/home/williamm/scratch/Deep-PIPE-Sites/PIPE4/'
+org_dir = '/home/williamm/scratch/final-wrap-up/PIPE/PIPE4/'
 SKIP_BOOL = False
 SKIP_INDICIES = [3902, 4675, 4676, 4757]
 
